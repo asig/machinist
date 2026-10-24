@@ -19,10 +19,12 @@
 
 package main
 
-import "fmt"
+import (
+	"os"
+)
 
 var version = "dev"
 
 func main() {
-	fmt.Println(version)
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
