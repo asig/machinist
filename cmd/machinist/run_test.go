@@ -21,9 +21,11 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -147,6 +149,90 @@ func TestRunVerbosePrintsResolvedDetails(t *testing.T) {
 			t.Fatalf("stderr = %q, want %q", stderr.String(), expected)
 		}
 	}
+}
+
+func TestRunReturnsCode3WhenBinaryMissing(t *testing.T) {
+	resetRuntimeHooks(t)
+	root := t.TempDir()
+	writeConfigFile(t, root, "vm", "binary = \"definitely-not-installed-qemu\"\n")
+
+	lookPath = func(file string) (string, error) {
+		return "", errors.New("not found")
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-c", root, "vm"}, &stdout, &stderr)
+	if code != 3 {
+		t.Fatalf("missing binary code = %d, want 3", code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "QEMU binary") {
+		t.Fatalf("stderr = %q, want missing binary message", stderr.String())
+	}
+}
+
+func TestRunExecutesResolvedCommand(t *testing.T) {
+	resetRuntimeHooks(t)
+	root := t.TempDir()
+	writeConfigFile(t, root, "vm", "cpu = \"host\"\n")
+
+	lookPath = func(file string) (string, error) {
+		if file != "qemu-system-x86_64" {
+			t.Fatalf("lookPath file = %q, want default binary", file)
+		}
+		return "/usr/bin/qemu-system-x86_64", nil
+	}
+
+	var gotPath string
+	var gotArgv []string
+	var gotEnv []string
+	doExec = func(path string, argv []string, envv []string) error {
+		gotPath = path
+		gotArgv = append([]string{}, argv...)
+		gotEnv = append([]string{}, envv...)
+		return syscall.EPERM
+	}
+	getEnv = func() []string {
+		return []string{"A=B"}
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-c", root, "vm"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exec failure code = %d, want 1", code)
+	}
+	if gotPath != "/usr/bin/qemu-system-x86_64" {
+		t.Fatalf("exec path = %q", gotPath)
+	}
+	wantArgv := []string{"/usr/bin/qemu-system-x86_64", "-cpu", "host"}
+	if strings.Join(gotArgv, "\n") != strings.Join(wantArgv, "\n") {
+		t.Fatalf("exec argv = %#v, want %#v", gotArgv, wantArgv)
+	}
+	if strings.Join(gotEnv, "\n") != "A=B" {
+		t.Fatalf("exec env = %#v, want A=B", gotEnv)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "operation not permitted") {
+		t.Fatalf("stderr = %q, want exec error", stderr.String())
+	}
+}
+
+func resetRuntimeHooks(t *testing.T) {
+	t.Helper()
+	origLookPath := lookPath
+	origStat := statFile
+	origExec := doExec
+	origEnv := getEnv
+	t.Cleanup(func() {
+		lookPath = origLookPath
+		statFile = origStat
+		doExec = origExec
+		getEnv = origEnv
+	})
 }
 
 func writeConfigFile(t *testing.T, root, name, contents string) {

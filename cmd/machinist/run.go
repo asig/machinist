@@ -20,13 +20,24 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 
 	"github.com/asig/machinist/internal/build"
 	"github.com/asig/machinist/internal/config"
+)
+
+var (
+	lookPath = exec.LookPath
+	statFile = os.Stat
+	doExec   = syscall.Exec
+	getEnv   = os.Environ
 )
 
 func run(args []string, stdout, stderr io.Writer) int {
@@ -82,6 +93,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	path, err := resolveBinary(commandLine[0])
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 3
+	}
+	argv := append([]string{path}, commandLine[1:]...)
+	if err := doExec(path, argv, getEnv()); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
 	return 0
 }
 
@@ -118,4 +139,26 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "      --strict              Treat warnings as fatal errors")
 	fmt.Fprintln(w, "  -h, --help                Show help")
 	fmt.Fprintln(w, "      --version             Show version")
+}
+
+func resolveBinary(binary string) (string, error) {
+	if strings.Contains(binary, "/") {
+		info, err := statFile(binary)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return "", fmt.Errorf("QEMU binary %q not found", binary)
+			}
+			return "", fmt.Errorf("check QEMU binary %q: %w", binary, err)
+		}
+		if info.IsDir() || info.Mode()&0o111 == 0 {
+			return "", fmt.Errorf("QEMU binary %q not found", binary)
+		}
+		return binary, nil
+	}
+
+	resolved, err := lookPath(binary)
+	if err != nil {
+		return "", fmt.Errorf("QEMU binary %q not found in PATH", binary)
+	}
+	return resolved, nil
 }
