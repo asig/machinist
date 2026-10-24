@@ -187,6 +187,9 @@ func decodeNamedProps(result *layer, section, required string, value any) (map[s
 		if err != nil {
 			return nil, err
 		}
+		if _, exists := props["id"]; exists {
+			return nil, result.valueError(keyPath+".id", "is provided by the table key")
+		}
 		if err := requireStringProperty(result, keyPath, required, props); err != nil {
 			return nil, err
 		}
