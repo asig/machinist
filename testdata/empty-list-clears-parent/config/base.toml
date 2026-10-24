@@ -1,0 +1,7 @@
+extra_args = ["-S", "-s"]
+
+[[device]]
+driver = "virtio-net"
+
+[[drive]]
+file = "disk.qcow2"

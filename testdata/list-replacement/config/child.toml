@@ -1,0 +1,3 @@
+parent = "base"
+[[device]]
+driver = "virtio-mouse"

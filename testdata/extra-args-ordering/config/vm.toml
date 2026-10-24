@@ -1,0 +1,2 @@
+cpu = "host"
+extra_args = ["-monitor", "stdio", "-S"]

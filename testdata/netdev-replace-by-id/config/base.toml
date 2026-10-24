@@ -1,0 +1,6 @@
+[netdev.shared]
+type = "user"
+hostfwd = "tcp::2222-:22"
+
+[netdev.onlybase]
+type = "tap"

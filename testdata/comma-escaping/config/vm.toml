@@ -1,0 +1,3 @@
+[netdev.n0]
+type = "user"
+hostfwd = "tcp::2222-:22,tcp::8080-:80"

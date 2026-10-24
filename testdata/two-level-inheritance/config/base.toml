@@ -1,0 +1,3 @@
+cpu = "host"
+[netdev.parent]
+type = "user"

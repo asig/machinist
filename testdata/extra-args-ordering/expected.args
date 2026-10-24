@@ -1,0 +1,6 @@
+qemu-system-x86_64
+-cpu
+host
+-monitor
+stdio
+-S

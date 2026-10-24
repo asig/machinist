@@ -1,0 +1,4 @@
+[[device]]
+driver = "virtio-rng"
+hotplug = true
+rombar = false

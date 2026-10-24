@@ -1,0 +1,5 @@
+parent = "base"
+
+[netdev.shared]
+type = "socket"
+connect = "127.0.0.1:3333"

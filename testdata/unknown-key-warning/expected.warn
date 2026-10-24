@@ -1,0 +1,2 @@
+${CASE_DIR}/config/vm.toml: unknown key "unknown_alpha"
+${CASE_DIR}/config/vm.toml: unknown key "unknown_zeta"

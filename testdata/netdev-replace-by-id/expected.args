@@ -1,0 +1,5 @@
+qemu-system-x86_64
+-netdev
+tap,id=onlybase
+-netdev
+socket,id=shared,connect=127.0.0.1:3333
