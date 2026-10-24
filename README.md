@@ -54,7 +54,7 @@ Without `--dry-run`, Machinist replaces itself with QEMU via `exec`, so signals 
 
 ## Configuration
 
-A config is a TOML file. See [config/dos622.toml](config/dos622.toml) for a complete example.
+A config is a TOML file.
 
 ```toml
 parent  = "base"               # optional, name relative to the config root
