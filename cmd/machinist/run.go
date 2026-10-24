@@ -26,11 +26,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"syscall"
 
 	"github.com/asig/machinist/internal/build"
 	"github.com/asig/machinist/internal/config"
+	"github.com/asig/machinist/internal/model"
 )
 
 var (
@@ -80,7 +82,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	if verbose {
 		fmt.Fprintf(stderr, "chain: %s\n", strings.Join(result.Chain, " -> "))
-		fmt.Fprintf(stderr, "binary: %s\n", result.Machine.Binary)
+		printResolved(stderr, result)
 		fmt.Fprintf(stderr, "args: %s\n", strings.Join(commandLine[1:], " "))
 	}
 
@@ -95,7 +97,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	path, err := resolveBinary(commandLine[0])
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		fmt.Fprintf(stderr, "%v (set by %s)\n", err, result.BinarySource)
 		return 3
 	}
 	argv := append([]string{path}, commandLine[1:]...)
@@ -161,4 +163,65 @@ func resolveBinary(binary string) (string, error) {
 		return "", fmt.Errorf("QEMU binary %q not found in PATH", binary)
 	}
 	return resolved, nil
+}
+
+// printResolved dumps the merged configuration in a fixed order.
+func printResolved(w io.Writer, result *config.Result) {
+	m := result.Machine
+	fmt.Fprintf(w, "binary: %s (set by %s)\n", m.Binary, result.BinarySource)
+	for _, kv := range [][2]string{{"machine", m.Machine}, {"cpu", m.CPU}, {"smp", m.SMP}, {"memory", m.Memory}, {"vga", m.VGA}, {"display", m.Display}} {
+		if kv[1] != "" {
+			fmt.Fprintf(w, "%s: %s\n", kv[0], kv[1])
+		}
+	}
+	printProps(w, "netdev", sortedProps(m.Netdevs))
+	printProps(w, "audiodev", sortedProps(m.Audiodevs))
+	printProps(w, "device", m.Devices)
+	printProps(w, "drive", m.Drives)
+	for _, arg := range m.ExtraArgs {
+		fmt.Fprintf(w, "extra_arg: %s\n", quote(arg))
+	}
+}
+
+func sortedProps(entries map[string]model.Props) []model.Props {
+	ids := make([]string, 0, len(entries))
+	for id := range entries {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]model.Props, 0, len(ids))
+	for _, id := range ids {
+		props := model.Props{"id": id}
+		for k, v := range entries[id] {
+			props[k] = v
+		}
+		out = append(out, props)
+	}
+	return out
+}
+
+func printProps(w io.Writer, label string, list []model.Props) {
+	for _, props := range list {
+		keys := make([]string, 0, len(props))
+		for k := range props {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		parts := make([]string, len(keys))
+		for i, k := range keys {
+			parts[i] = k + "=" + displayValue(props[k])
+		}
+		fmt.Fprintf(w, "%s: %s\n", label, strings.Join(parts, " "))
+	}
+}
+
+// displayValue prints booleans as on/off, like the generated command line.
+func displayValue(v any) string {
+	if b, ok := v.(bool); ok {
+		if b {
+			return "on"
+		}
+		return "off"
+	}
+	return fmt.Sprint(v)
 }

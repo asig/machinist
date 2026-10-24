@@ -199,9 +199,9 @@ func TestLoadLayerReportsParseLine(t *testing.T) {
 
 func TestLoadLayerReportsMissingRootAndFile(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "missing-root")
-	_, err := loadLayer(root, "dos")
+	_, err := Load(root, "dos")
 	if err == nil || !strings.Contains(err.Error(), "config root") || !strings.Contains(err.Error(), root) {
-		t.Fatalf("loadLayer missing root error = %v", err)
+		t.Fatalf("Load missing root error = %v", err)
 	}
 
 	root = t.TempDir()

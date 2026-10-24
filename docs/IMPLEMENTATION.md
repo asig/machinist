@@ -88,6 +88,7 @@ type Machine struct {
 type Result struct {
     Machine  model.Machine
     Chain    []string // config names, root ancestor first, requested config last
+    BinarySource string // config that set the binary, or "default"
     Warnings []string // e.g. unknown keys; the caller decides if they are fatal
 }
 

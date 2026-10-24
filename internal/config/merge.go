@@ -35,24 +35,10 @@ func mergeLayers(layers []*layer) *Result {
 
 		if current.Binary != nil {
 			machine.Binary = *current.Binary
+			result.BinarySource = current.Name
 		}
-		for _, key := range scalarKeys {
-			if value, ok := current.Scalars[key]; ok {
-				switch key {
-				case "machine":
-					machine.Machine = value
-				case "cpu":
-					machine.CPU = value
-				case "smp":
-					machine.SMP = value
-				case "memory":
-					machine.Memory = value
-				case "vga":
-					machine.VGA = value
-				case "display":
-					machine.Display = value
-				}
-			}
+		for key, value := range current.Scalars {
+			*scalarField(&machine, key) = value
 		}
 		for id, props := range current.Netdevs {
 			machine.Netdevs[id] = props
@@ -76,7 +62,28 @@ func mergeLayers(layers []*layer) *Result {
 
 	if machine.Binary == "" {
 		machine.Binary = defaultBinary
+		result.BinarySource = "default"
 	}
 	result.Machine = machine
 	return result
+}
+
+// scalarField maps a scalar key from scalarKeys to its Machine field.
+func scalarField(m *model.Machine, key string) *string {
+	switch key {
+	case "machine":
+		return &m.Machine
+	case "cpu":
+		return &m.CPU
+	case "smp":
+		return &m.SMP
+	case "memory":
+		return &m.Memory
+	case "vga":
+		return &m.VGA
+	case "display":
+		return &m.Display
+	default:
+		panic("config: unknown scalar key " + key)
+	}
 }

@@ -52,12 +52,6 @@ func loadLayer(root, name string) (*layer, error) {
 	}
 
 	path := filepath.Join(root, filepath.FromSlash(name)+".toml")
-	if _, err := os.Stat(root); err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("config root %q does not exist", root)
-		}
-		return nil, fmt.Errorf("check config root %q: %w", root, err)
-	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {

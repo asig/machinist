@@ -19,17 +19,33 @@
 
 package config
 
-import "github.com/asig/machinist/internal/model"
+import (
+	"fmt"
+	"os"
+
+	"github.com/asig/machinist/internal/model"
+)
 
 // Result contains the resolved machine, inheritance chain, and warnings.
 type Result struct {
-	Machine  model.Machine
-	Chain    []string
-	Warnings []string
+	Machine model.Machine
+	Chain   []string
+	// BinarySource names the config that set the binary, or "default".
+	BinarySource string
+	Warnings     []string
 }
 
 // Load resolves name below root and merges its inheritance chain.
 func Load(root, name string) (*Result, error) {
+	if err := ValidateName(name); err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(root); err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("config root %q does not exist", root)
+		}
+		return nil, fmt.Errorf("check config root %q: %w", root, err)
+	}
 	layers, err := resolveChain(root, name)
 	if err != nil {
 		return nil, err

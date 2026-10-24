@@ -178,7 +178,7 @@ Values such as `drive.file` are passed through unchanged. Relative paths are the
 ## 4. Command-Line Interface
 
 ```
-qemu-launcher [options] <config-name>
+machinist [options] <config-name>
 
 Options:
   -c, --config-dir <path>   Config root directory (default: config, relative to the current working directory)
@@ -247,8 +247,8 @@ config/
 Usage:
 
 ```
-qemu-launcher dos/win311
-qemu-launcher -c ~/vms/config debug/dos622
+machinist dos/win311
+machinist -c ~/vms/config debug/dos622
 ```
 
 Note: `debug/dos622.toml` replaces `extra_args` of `dos/dos622` completely. If the parent defines `extra_args`, the child must repeat them.
