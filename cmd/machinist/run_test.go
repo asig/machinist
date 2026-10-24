@@ -151,6 +151,50 @@ func TestRunVerbosePrintsResolvedDetails(t *testing.T) {
 	}
 }
 
+func TestRunUsesDefaultConfigRoot(t *testing.T) {
+	root := t.TempDir()
+	origWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+	})
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	writeConfigFile(t, filepath.Join(root, "config"), "vm", "cpu = \"host\"\n")
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-n", "vm"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("default root code = %d, want 0", code)
+	}
+	if strings.TrimSpace(stdout.String()) != "qemu-system-x86_64 -cpu host" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
+func TestRunWarnsOnUnknownKeyWithoutStrict(t *testing.T) {
+	root := t.TempDir()
+	writeConfigFile(t, root, "vm", "unknown_key = 1\n")
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-c", root, "-n", "vm"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("warning code = %d, want 0", code)
+	}
+	if strings.TrimSpace(stdout.String()) != "qemu-system-x86_64" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), `unknown key "unknown_key"`) {
+		t.Fatalf("stderr = %q, want warning", stderr.String())
+	}
+}
+
 func TestRunReturnsCode3WhenBinaryMissing(t *testing.T) {
 	resetRuntimeHooks(t)
 	root := t.TempDir()
