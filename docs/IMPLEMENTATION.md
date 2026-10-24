@@ -37,7 +37,7 @@ machinist/
     SPEC.md
     IMPLEMENTATION.md
   .github/copilot-instructions.md
-  scripts/check-headers.sh   # license header check, called by `make check`
+  scripts/check-headers.sh   # license header check for Go files, called by `make check`
   LICENSE                    # GPLv3 full text
   Makefile
   go.mod
@@ -241,7 +241,7 @@ One step is one commit. Every commit must pass `make check test`.
 
 | Step | Content | Done when |
 |------|---------|-----------|
-| 1 | Scaffold: `LICENSE`, `scripts/check-headers.sh`, `go.mod`, directories, `Makefile`, `.gitignore`, `main.go` that prints the version. All files with headers (section 8) | `make check build static` works |
+| 1 | Scaffold: `LICENSE`, `scripts/check-headers.sh`, `go.mod`, directories, `Makefile`, `.gitignore`, `main.go` that prints the version. Go files with headers (section 8) | `make check build static` works |
 | 2 | `internal/model` types, `config.ValidateName` | table-driven tests cover every rule in spec 3.8 |
 | 3 | `config/layer.go`: decode and validate one TOML file | tests for every type error, unknown keys, parse error with line |
 | 4 | `config/chain.go`: chain resolution | tests for cycle, depth limit, missing parent, parent in other subdirectory |
@@ -262,7 +262,7 @@ One step is one commit. Every commit must pass `make check test`.
 
 ## 8. License Headers
 
-Machinist is licensed under the GNU General Public License, version 3 or (at your option) any later version. The full text is in `LICENSE`. Every file carries the long-form header below as its first content, except the files listed in 8.3.
+Machinist is licensed under the GNU General Public License, version 3 or (at your option) any later version. The full text is in `LICENSE`. Every Go file carries the long-form header below as its first content. Other file types carry no header.
 
 ### 8.1 Go files
 
@@ -293,21 +293,10 @@ Exactly one blank line between the header and `package`. Without it, the header 
 
 ### 8.2 Other file types
 
-The text is the same, only the comment syntax changes:
+Only `*.go` files carry the header. Markdown, `Makefile`, shell scripts, `.gitignore`, `go.mod`, `go.sum`, TOML configs, everything below `docs/` and everything below `testdata/` have none. They are covered by the `LICENSE` of the repository.
 
-- Markdown (`*.md`) outside `docs/`: wrap the text in `<!--` and `-->`, first lines of the file, followed by a blank line.
-- `Makefile`, shell scripts, `.gitignore`: prefix every line with `# `. For scripts, the shebang stays on line 1 and the header follows directly after it.
-- `go.mod`: prefix every line with `// `, before the `module` line.
+### 8.3 Check
 
-### 8.3 Exceptions
-
-- `LICENSE` (it is the license text itself)
-- `go.sum` (generated, cannot hold comments)
-- everything below `docs/` (the documentation, including this file and `SPEC.md`, is not source code and stays free of headers)
-- everything below `testdata/` (fixtures and golden files are compared byte for byte or line by line, and a 17 line header would bury the 3 lines that matter). They are covered by the `LICENSE` of the repository.
-
-### 8.4 Check
-
-`scripts/check-headers.sh` lists all tracked and untracked, non-ignored files (`git ls-files --cached --others --exclude-standard`), removes the exceptions above, and fails with a list of every file in which the first 30 lines do not contain the line `This file is part of Machinist.`. It is part of `make check`.
+`scripts/check-headers.sh` lists all tracked and untracked, non-ignored `*.go` files (`git ls-files --cached --others --exclude-standard -- '*.go'`) and fails with a list of every file in which the first 30 lines do not contain the line `This file is part of Machinist.`. It is part of `make check`.
 
 Header text is never edited per file. A year change or a new copyright holder is a repository-wide search and replace.
