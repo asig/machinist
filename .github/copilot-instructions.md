@@ -1,3 +1,22 @@
+<!--
+This file is part of Machinist.
+
+Copyright (C) 2026 Andreas Signer <asigner@gmail.com>
+
+Machinist is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Machinist is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Machinist.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
 # Copilot Instructions for Machinist
 
 Machinist is a QEMU launcher written in Go. It starts QEMU from named, hierarchical TOML configs. The binary is called `machinist`.
@@ -49,6 +68,14 @@ Machinist is a QEMU launcher written in Go. It starts QEMU from named, hierarchi
 - Idiomatic, simple Go. Prefer small functions and explicit types over abstraction. No interfaces without at least two implementations or a test need.
 - Comments explain why, not what. Exported identifiers get doc comments.
 - No em dashes in code, comments, docs or commit messages. Use commas, colons or hyphens.
+
+## License
+
+- Machinist is licensed under GPLv3 or later. The full text is in `LICENSE`.
+- Every new file gets the long-form license header defined in section 8 of `docs/IMPLEMENTATION.md`, as the very first content of the file. Copy it exactly, including the project name "Machinist" and the copyright line.
+- Go files use the `/* ... */` form, followed by one blank line before `package`. Markdown files outside `docs/` use the HTML comment form. `Makefile`, shell scripts and `go.mod` use `#` or `//` lines as described there.
+- Exceptions: `LICENSE`, `go.sum`, everything below `docs/` and everything below `testdata/`. Do not add headers to files in `docs/`.
+- `make check` verifies the headers. Do not commit a file that fails it.
 
 ## Workflow
 
