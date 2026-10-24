@@ -17,7 +17,7 @@
 // along with Machinist.  If not, see <https://www.gnu.org/licenses/>.
 // -->
 
-module github.com/asigner/machinist
+module github.com/asig/machinist
 
 go 1.23
 
