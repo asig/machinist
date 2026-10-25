@@ -50,5 +50,5 @@ func Load(root, name string) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return mergeLayers(layers), nil
+	return mergeLayers(layers)
 }

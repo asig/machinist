@@ -158,7 +158,7 @@ func TestLoadLayerRejectsInvalidValues(t *testing.T) {
 		{"device driver wrong type", "[[device]]\ndriver = false\n", "device[0].driver: must be a string"},
 		{"drive wrong shape", "drive = {}\n", "drive: must be an array of tables"},
 		{"drive entry wrong shape", "drive = [1]\n", "drive[0]: must be a table"},
-		{"extra args wrong shape", "extra_args = \"-S\"\n", "extra_args: must be an array of strings"},
+		{"extra args wrong shape", "extra_args = 1\n", "extra_args: must be an array of strings"},
 		{"extra args item wrong type", "extra_args = [1]\n", "extra_args[0]: must be a string"},
 		{"property float", "[[drive]]\nfile = 1.5\n", "drive[0].file: unsupported value type"},
 		{"property array", "[[drive]]\nfile = [\"disk\"]\n", "drive[0].file: unsupported value type"},

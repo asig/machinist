@@ -22,7 +22,8 @@ Machinist is a QEMU launcher written in Go. It starts QEMU from named, hierarchi
 
 - `cmd/machinist`: flag parsing, dry-run, verbose output, exec. No business logic.
 - `internal/model`: shared types only (`Machine`, `Props`). Imports nothing from the project.
-- `internal/config`: loading, config name validation, parent chain resolution, cycle detection, merge. Produces a fully merged `model.Machine`.
+- `internal/config`: loading, config name validation, parent chain resolution, cycle detection, merge. Evaluates `${...}` expressions per layer (via `internal/expr`) and produces a fully merged `model.Machine`.
+- `internal/expr`: expression parser and evaluator for `${...}` in config strings. Stdlib only, imports nothing from the project.
 - `internal/build`: pure function from `model.Machine` to `[]string`. No file system access, no environment access, no imports of `internal/config`.
 - Keep packages small and independent so each can be tested alone.
 

@@ -93,10 +93,37 @@ A child config is merged on top of its parent chain (at most 16 levels):
 
 - Scalar keys: the child replaces the parent value.
 - `netdev` and `audiodev`: merged by id, a child entry replaces the parent entry as a whole.
-- `device`, `drive`, `extra_args`: the child list replaces the parent list. An empty list clears it.
+- `device`, `drive`, `extra_args`: the child list replaces the parent list. An empty list clears it. Use an [expression](#expressions) to extend the parent list instead.
 - A child cannot delete inherited scalars or table entries.
 
 `parent` is always relative to the config root, never to the child's directory. Circular references are rejected.
+
+### Expressions
+
+String values can contain `${ ... }` expressions. `self` is the current file, `parent` is the merged result of all ancestors:
+
+```toml
+parent = "base"
+memory = "${parent.memory * 2}"
+cpu = "${parent.cpu}-v2"
+extra_args = "${parent.extra_args + ['-S', '-s']}"
+```
+
+More examples:
+
+```toml
+extra_args = ["${parent.extra_args}", "-S"]        # splice the parent list, then add -S
+extra_args = "${['-S'] + parent.extra_args}"       # prepend instead
+smp = "${self.cores * 2}"                          # read another key of this file
+cores = 2
+[[device]]
+driver = "${parent.device[0].driver}"              # reuse a parent value
+bus = "${1 + 1}"                                   # single placeholder keeps the type: integer 2
+```
+
+Rules in short: `self` is the current file as written (not expanded), `parent` is the merged result of all ancestors, and unset keys are errors. Parent scalars that are plain decimal numbers are integers, so `${parent.memory + 512}` is arithmetic, while `512M` stays text. Names cannot contain hyphens, so write `parent.netdev['net-0']`. Expressions are not allowed in `parent`. Errors name the file, key and column.
+
+Supported: `+ - * / %` on integers, `+` to concatenate strings and lists or append to a list, list literals `[a, b]`, property access `a.b`, `a['b']`, `a[0]`, and `$${` for a literal `${`. A value that is exactly one expression keeps its type. See `docs/SPEC.md` section 3.9.
 
 ### Output
 

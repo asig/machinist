@@ -23,7 +23,7 @@ import "github.com/asig/machinist/internal/model"
 
 const defaultBinary = "qemu-system-x86_64"
 
-func mergeLayers(layers []*layer) *Result {
+func mergeLayers(layers []*layer) (*Result, error) {
 	machine := model.Machine{
 		Netdevs:   make(map[string]model.Props),
 		Audiodevs: make(map[string]model.Props),
@@ -32,6 +32,9 @@ func mergeLayers(layers []*layer) *Result {
 
 	for _, current := range layers {
 		result.Chain = append(result.Chain, current.Name)
+		if err := evalLayer(current, machine); err != nil {
+			return nil, err
+		}
 
 		if current.Binary != nil {
 			machine.Binary = *current.Binary
@@ -52,7 +55,7 @@ func mergeLayers(layers []*layer) *Result {
 		if current.Drives != nil {
 			machine.Drives = current.Drives
 		}
-		if current.ExtraArgs != nil {
+		if current.ExtraArgs != nil || current.ExtraArgsExpr != nil {
 			machine.ExtraArgs = current.ExtraArgs
 		}
 		for _, key := range current.Unknown {
@@ -65,7 +68,7 @@ func mergeLayers(layers []*layer) *Result {
 		result.BinarySource = "default"
 	}
 	result.Machine = machine
-	return result
+	return result, nil
 }
 
 // scalarField maps a scalar key from scalarKeys to its Machine field.

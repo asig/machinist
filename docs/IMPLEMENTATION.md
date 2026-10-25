@@ -20,8 +20,12 @@ machinist/
       layer.go           # decode one TOML file into a typed layer
       chain.go           # resolve parent chain, cycle and depth checks
       merge.go           # merge layers into model.Machine
+      eval.go            # expand ${...} in a layer against self and the merged parent
       load.go            # Load(): public entry point
       *_test.go
+    expr/
+      expr.go            # expression parser and evaluator, stdlib only
+      expr_test.go
     build/
       build.go           # CommandLine(): model.Machine to []string
       props.go           # key=value serialization
@@ -47,10 +51,11 @@ Dependency direction (no cycles, nothing else allowed):
 
 ```
 cmd/machinist --> internal/config --> internal/model
+                                   --> internal/expr
               --> internal/build  --> internal/model
 ```
 
-`internal/config` and `internal/build` never import each other. `internal/model` imports nothing from the project.
+`internal/config` and `internal/build` never import each other. `internal/expr` and `internal/model` import nothing from the project.
 
 ## 2. Types
 
@@ -113,6 +118,8 @@ type layer struct {
     Devices    []model.Props // nil = absent, non-nil empty = present and empty
     Drives     []model.Props // same rule
     ExtraArgs  []string      // same rule
+    ExtraArgsExpr *string     // extra_args given as one expression string
+    Raw        map[string]any // decoded TOML, exposed to expressions as "self"
     Unknown    []string      // unknown top-level keys, sorted
 }
 ```
@@ -163,7 +170,7 @@ Flags use the standard `flag` package. Register short and long names for the sam
    - `machine`, `cpu`, `memory`, `vga`, `display`, `smp`: string or int64, stored as string
    - `netdev`, `audiodev`: table of tables, key is the id
    - `device`, `drive`: array of tables
-   - `extra_args`: array of strings
+   - `extra_args`: array of strings, or one string that is an expression yielding a list
    - anything else: collected in `Unknown` (sorted)
 4. Every props table is validated: values must be string, int64 or bool. Float, datetime, array and nested table are errors naming file and key path.
 5. Leading key (`type` for netdev, `driver` for audiodev and device) must exist and be a string.
@@ -187,7 +194,13 @@ Start from a zero `model.Machine`. For each layer, root first:
 - `Netdevs` and `Audiodevs`: for each id in the layer, replace the whole entry.
 - `Devices`, `Drives`, `ExtraArgs`: replace the whole list if the layer's slice is non-nil.
 
+Before a layer is merged, `evalLayer` (`eval.go`) expands its `${...}` expressions with `self` (the layer's raw values) and `parent` (the machine merged so far, scalars that are canonical decimal integers exposed as integers). Props values keep the type of a whole-string expression, `extra_args` items yielding lists are spliced, and `ExtraArgsExpr` must yield a list. Errors name layer, file and key path.
+
 After the last layer: if `Binary` is empty, set `qemu-system-x86_64`. Collect warnings from `Unknown` as `<path>: unknown key "<key>"`.
+
+### 3.3.1 Expressions (`internal/expr`)
+
+`expr.Eval(template, env)` scans for `${`, parses with a hand-written recursive descent parser (grammar in the package doc, user-facing rules in spec 3.9) and returns `any` (int64, string, bool, `[]any`, `map[string]any`). A template that is exactly one placeholder returns the typed value, anything else a string. `$${` is the escape for a literal `${`. The package has no knowledge of config types.
 
 ### 3.4 Build (`build.go`)
 
@@ -223,6 +236,8 @@ These are choices the implementation makes. If you agree, move them into `docs/S
 3. Arrays as property values are errors, like nested tables.
 4. Duplicate keys and other TOML syntax errors are reported by the parser as invalid TOML with file and line.
 5. `--verbose` output format is not specified and may change.
+6. `self` is not expanded: it exposes the raw values of the current file, so expressions never depend on evaluation order within one file.
+7. Hyphens are not allowed in expression names, use `['net-0']` for such ids.
 
 ## 5. Tooling
 
@@ -247,6 +262,7 @@ One step is one commit. Every commit must pass `make check test`.
 | 3 | `config/layer.go`: decode and validate one TOML file | tests for every type error, unknown keys, parse error with line |
 | 4 | `config/chain.go`: chain resolution | tests for cycle, depth limit, missing parent, parent in other subdirectory |
 | 5 | `config/merge.go`, `config/load.go` | tests for scalar override, netdev replace by id, list replace, empty list clears, binary default and inheritance |
+| 5a | `internal/expr`, `config/eval.go` | table tests for operators, precedence, types and every error; config tests for `self`/`parent`, splicing, type preservation |
 | 6 | `build/props.go`: value formatting and property ordering | tests for comma escaping, bool, int, lead key, id, sorting, errors |
 | 7 | `build/build.go`: command line assembly | unit tests with literal `model.Machine` values; `extra_args` is last |
 | 8 | Golden test harness and cases for all mandatory cases in spec section 9 | `make test` green, every case has `expected.args` or `expected.err` |

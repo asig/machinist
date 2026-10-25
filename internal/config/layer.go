@@ -43,7 +43,11 @@ type layer struct {
 	Devices    []model.Props
 	Drives     []model.Props
 	ExtraArgs  []string
-	Unknown    []string
+	// ExtraArgsExpr is set when extra_args is a single expression string.
+	ExtraArgsExpr *string
+	// Raw holds the decoded TOML values, exposed to expressions as "self".
+	Raw     map[string]any
+	Unknown []string
 }
 
 func loadLayer(root, name string) (*layer, error) {
@@ -74,6 +78,7 @@ func loadLayer(root, name string) (*layer, error) {
 		Scalars:   make(map[string]string),
 		Netdevs:   make(map[string]model.Props),
 		Audiodevs: make(map[string]model.Props),
+		Raw:       raw,
 	}
 	if err := decodeLayerValues(result, raw); err != nil {
 		return nil, err
@@ -159,7 +164,9 @@ func decodeLayerValues(result *layer, raw map[string]any) error {
 			return err
 		}
 	}
-	if value, ok := raw["extra_args"]; ok {
+	if expression, ok := raw["extra_args"].(string); ok {
+		result.ExtraArgsExpr = &expression
+	} else if value, ok := raw["extra_args"]; ok {
 		result.ExtraArgs, err = decodeStringArray(result, "extra_args", value)
 		if err != nil {
 			return err

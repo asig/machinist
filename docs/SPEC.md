@@ -91,6 +91,7 @@ extra_args = ["-monitor", "stdio"]
   - Scalar keys: the child value replaces the parent value.
   - Tables (`netdev`, `audiodev`): merged by id. A child entry with the same id replaces the parent entry as a whole (no per-property merge). Entries with other ids are kept.
   - Arrays (`device`, `drive`, `extra_args`): the child array replaces the parent array entirely. An empty array in the child clears the parent list.
+  - Any string value may contain `${...}` expressions that read the parent's merged values, for example to extend `extra_args` instead of replacing it (see 3.9).
   - A child cannot delete a scalar or table entry of its parent (see Non-Goals).
 - The `parent` key itself is not inherited.
 - Circular parent references are rejected with the full cycle path.
@@ -175,6 +176,19 @@ Values such as `drive.file` are passed through unchanged. Relative paths are the
 - Only files with the `.toml` extension are configs. Directories are never configs themselves.
 - Identity for cycle detection is the normalized config name, so each file has exactly one name.
 
+### 3.9 Expressions
+
+String values may contain `${ ... }` placeholders, evaluated while the hierarchy is merged. They are allowed in every string value except `parent`: `binary`, scalar keys, properties of `netdev`, `audiodev`, `device` and `drive`, and items of `extra_args`. `extra_args` may also be a single string, which must yield a list.
+
+- Variables: `self` is the current file (raw values as written, not expanded) and `parent` is the configuration merged from all ancestors. Both expose the keys `binary`, scalar keys, `netdev.<id>`, `audiodev.<id>`, `device`, `drive` and `extra_args`. Scalars of `parent` that are canonical decimal integers are integers, so `${parent.memory + 512}` works. Unset keys are errors.
+- Access: `a.b`, `a['b']` (for ids such as `net-0`) and `list[0]`.
+- Literals: integers, `'text'` or `"text"` (backslash escapes the next character), `true`, `false`, `[a, b]`.
+- Operators, by increasing precedence: `+ -`, then `* / %`, then unary `-`; parentheses group. `/` is integer division, division by zero is an error.
+- `+` adds two integers, concatenates two lists, appends a non-list value to a list, and otherwise concatenates the string forms of both operands (string, integer, boolean).
+- A value consisting of exactly one placeholder keeps the type of the result (integer, boolean, list). Otherwise the result is a string. A list inside a longer string is an error.
+- An `extra_args` item yielding a list is spliced into the list. Lead keys (`type`, `driver`) must stay strings.
+- `$${` produces a literal `${`.
+
 ## 4. Command-Line Interface
 
 ```
@@ -219,6 +233,7 @@ Options:
 - Invalid config name (command line or `parent`): error naming the offending value and the violated rule.
 - Invalid TOML: parse error with file name and line number.
 - Missing `type` / `driver`, unsupported value types: error naming the config file and key path.
+- Expression syntax or evaluation errors (unknown variable or property, type mismatch, index out of range, division by zero, wrong result type): error naming the config file, key path and the column in the expression.
 - Unknown keys: warning, or fatal with `--strict`.
 - `binary` of the wrong type (not a string) or empty: error naming the config file and key.
 - QEMU binary not found in `PATH` (or at the configured path): error naming the binary and the config that set it (or "default"), raised before execution, exit code 3. Not checked in `--dry-run`.
@@ -251,18 +266,18 @@ machinist dos/win311
 machinist -c ~/vms/config debug/dos622
 ```
 
-Note: `debug/dos622.toml` replaces `extra_args` of `dos/dos622` completely. If the parent defines `extra_args`, the child must repeat them.
+Note: `debug/dos622.toml` replaces `extra_args` of `dos/dos622` completely. To keep the parent's arguments, write `extra_args = "${parent.extra_args + ['-S', '-s']}"`.
 
 ## 9. Testing Requirements
 
 - Unit tests for config loading, merging, cycle detection and value serialization.
 - Golden-file tests: each `testdata/<case>/` contains the config files, the config name to launch, and `expected.args` (one argument per line). Tests run the pure build function, no QEMU required.
-- Mandatory cases: default binary, binary set in config, binary inherited from parent, binary overridden in child, invalid binary value, simple config, two-level inheritance, list replacement, empty list clearing a parent list, `netdev` replace by id, missing parent, cycle across subdirectories, parent in a different subdirectory than the child (resolved from the config root), invalid config names (`..`, absolute, empty segment, trailing `.toml`, backslash), default config root `config`, custom `--config-dir`, unknown key (warning and strict), `extra_args` ordering, comma escaping, boolean serialization.
+- Mandatory cases: default binary, binary set in config, binary inherited from parent, binary overridden in child, invalid binary value, simple config, two-level inheritance, list replacement, empty list clearing a parent list, `netdev` replace by id, missing parent, cycle across subdirectories, parent in a different subdirectory than the child (resolved from the config root), invalid config names (`..`, absolute, empty segment, trailing `.toml`, backslash), default config root `config`, custom `--config-dir`, unknown key (warning and strict), `extra_args` ordering, comma escaping, boolean serialization, and expressions (arithmetic and precedence, string and list `+`, `self` and `parent` access, indexing, type preservation of single placeholders, list splicing in `extra_args`, `$${` escape, syntax and evaluation errors with file and key path).
 
 ## 10. Future Extensions (out of scope for v1)
 
 - Explicit list merge syntax
-- Environment variable expansion
+- Environment variable access in expressions
 - Multiple parent inheritance
 - Command-line overrides (`--set memory=256M`)
 - Key deletion in children
