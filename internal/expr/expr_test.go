@@ -52,6 +52,8 @@ func TestEval(t *testing.T) {
 		{"${parent.cpu + '-x'}", "host-x"},
 		{"${\"a}b\" + 'c'}", "a}bc"},
 		{"${true}", true},
+		{"flag=${true}", "flag=on"},
+		{"${'x' + false}", "xoff"},
 		{"${[]}", []any{}},
 		{"${parent.args + ['-s']}", []any{"-S", "-s"}},
 		{"${parent.args + '-s'}", []any{"-S", "-s"}},

@@ -1,0 +1,6 @@
+qemu-system-x86_64
+-monitor
+stdio
+-S
+-name
+vm-2

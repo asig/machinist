@@ -1,0 +1,2 @@
+parent = "base"
+extra_args = ["${parent.extra_args}", "-S", "-name", "vm-${1 + 1}"]

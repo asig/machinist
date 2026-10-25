@@ -30,7 +30,8 @@
 //	list    = "[" [ expr { "," expr } ] "]"
 //
 // Values are int64, string, bool, []any (lists) and map[string]any (objects,
-// only reachable through variables). "+" adds ints, concatenates a string with
+// only reachable through variables). Booleans stringify as "on" and "off".
+// "+" adds ints, concatenates a string with
 // a scalar, concatenates two lists and appends a scalar to a list.
 package expr
 
@@ -92,14 +93,15 @@ func Eval(template string, env map[string]any) (any, error) {
 	for _, part := range parts {
 		text, err := stringify(part)
 		if err != nil {
-			return nil, fmt.Errorf("in %q: %w", template, err)
+			return nil, err
 		}
 		out.WriteString(text)
 	}
 	return out.String(), nil
 }
 
-// Stringify converts a scalar value to its string form.
+// Stringify converts a scalar value to its string form. Booleans become
+// "on" and "off", as in property serialization.
 func Stringify(v any) (string, error) { return stringify(v) }
 
 func stringify(v any) (string, error) {
@@ -109,7 +111,11 @@ func stringify(v any) (string, error) {
 	case int64:
 		return strconv.FormatInt(v, 10), nil
 	case bool:
-		return strconv.FormatBool(v), nil
+		// Same mapping as QEMU property serialization (spec 3.4).
+		if v {
+			return "on", nil
+		}
+		return "off", nil
 	default:
 		return "", fmt.Errorf("cannot use %s as a string", typeName(v))
 	}
@@ -138,8 +144,20 @@ type parser struct {
 	env map[string]any
 }
 
+// Error is a syntax or evaluation error at a position in a template.
+type Error struct {
+	Template string
+	// Column is the 1-based byte offset in Template.
+	Column int
+	Msg    string
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("expression %q: column %d: %s", e.Template, e.Column, e.Msg)
+}
+
 func (p *parser) errorf(format string, args ...any) error {
-	return fmt.Errorf("expression %q: column %d: %s", p.s, p.pos+1, fmt.Sprintf(format, args...))
+	return &Error{Template: p.s, Column: p.pos + 1, Msg: fmt.Sprintf(format, args...)}
 }
 
 func (p *parser) skipSpace() {

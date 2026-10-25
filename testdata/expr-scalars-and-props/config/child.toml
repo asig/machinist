@@ -1,0 +1,10 @@
+parent = "base"
+memory = "${parent.memory * 2}"
+smp = "${parent.smp + 2}"
+cpu = "${parent.cpu}-v2"
+
+[[device]]
+driver = "virtio-blk"
+queues = "${1 + 1}"
+ioeventfd = "${true}"
+note = "x${true}"

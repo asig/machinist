@@ -238,6 +238,7 @@ These are choices the implementation makes. If you agree, move them into `docs/S
 5. `--verbose` output format is not specified and may change.
 6. `self` is not expanded: it exposes the raw values of the current file, so expressions never depend on evaluation order within one file.
 7. Hyphens are not allowed in expression names, use `['net-0']` for such ids.
+8. Expression errors are `*expr.Error` values. `config` re-wraps them with file and key path and keeps only the column and message, so the template is not repeated.
 
 ## 5. Tooling
 

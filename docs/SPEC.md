@@ -184,8 +184,11 @@ String values may contain `${ ... }` placeholders, evaluated while the hierarchy
 - Access: `a.b`, `a['b']` (for ids such as `net-0`) and `list[0]`.
 - Literals: integers, `'text'` or `"text"` (backslash escapes the next character), `true`, `false`, `[a, b]`.
 - Operators, by increasing precedence: `+ -`, then `* / %`, then unary `-`; parentheses group. `/` is integer division, division by zero is an error.
-- `+` adds two integers, concatenates two lists, appends a non-list value to a list, and otherwise concatenates the string forms of both operands (string, integer, boolean).
+- `+` adds two integers, concatenates two lists, appends a non-list value to a list, and otherwise concatenates the string forms of both operands (string, integer, boolean). Booleans have the string form `on` and `off`, as in 3.4, so `"x${true}"` is `xon`.
 - A value consisting of exactly one placeholder keeps the type of the result (integer, boolean, list). Otherwise the result is a string. A list inside a longer string is an error.
+- Scalar keys (`memory`, `smp`, ...) and `binary` are always strings after evaluation, so `memory = "${1024}"` is the string `1024`. Type preservation applies to properties of `netdev`, `audiodev`, `device` and `drive`, and to `extra_args`.
+- `self` is not evaluated: `self.key` yields the value as written in the file. With `cores = "${1 + 1}"`, `self.cores` is the text `${1 + 1}`, not 2. Only plain TOML numbers and booleans in `self` are usable for arithmetic. Use `parent` for values that went through evaluation.
+- Errors report the config file, the key path and the column in the expression, for example `memory: column 15: unknown property "memry"`.
 - An `extra_args` item yielding a list is spliced into the list. Lead keys (`type`, `driver`) must stay strings.
 - `$${` produces a literal `${`.
 

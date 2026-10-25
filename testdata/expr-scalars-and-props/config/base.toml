@@ -1,0 +1,3 @@
+memory = "128"
+smp = 2
+cpu = "host"

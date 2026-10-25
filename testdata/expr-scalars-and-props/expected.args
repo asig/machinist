@@ -1,0 +1,9 @@
+qemu-system-x86_64
+-cpu
+host-v2
+-smp
+4
+-m
+256
+-device
+virtio-blk,ioeventfd=on,note=xon,queues=2

@@ -20,6 +20,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -80,7 +81,7 @@ func evalLayer(l *layer, parent model.Machine) error {
 	if l.ExtraArgsExpr != nil {
 		value, err := expr.Eval(*l.ExtraArgsExpr, env)
 		if err != nil {
-			return l.valueError("extra_args", err.Error())
+			return l.valueError("extra_args", exprMessage(err))
 		}
 		list, ok := value.([]any)
 		if !ok {
@@ -97,14 +98,24 @@ func evalLayer(l *layer, parent model.Machine) error {
 	return nil
 }
 
+// exprMessage drops the template from expression errors, because the caller
+// already names the file and key path.
+func exprMessage(err error) string {
+	var exprErr *expr.Error
+	if errors.As(err, &exprErr) {
+		return fmt.Sprintf("column %d: %s", exprErr.Column, exprErr.Msg)
+	}
+	return err.Error()
+}
+
 func evalString(l *layer, env map[string]any, keyPath, text string) (string, error) {
 	value, err := expr.Eval(text, env)
 	if err != nil {
-		return "", l.valueError(keyPath, err.Error())
+		return "", l.valueError(keyPath, exprMessage(err))
 	}
 	result, err := expr.Stringify(value)
 	if err != nil {
-		return "", l.valueError(keyPath, err.Error())
+		return "", l.valueError(keyPath, exprMessage(err))
 	}
 	return result, nil
 }
@@ -119,7 +130,7 @@ func evalProps(l *layer, env map[string]any, keyPath, lead string, props model.P
 		}
 		result, err := expr.Eval(text, env)
 		if err != nil {
-			return l.valueError(keyPath+"."+key, err.Error())
+			return l.valueError(keyPath+"."+key, exprMessage(err))
 		}
 		switch result.(type) {
 		case string, int64, bool:
@@ -141,7 +152,7 @@ func evalStringList(l *layer, env map[string]any, keyPath string, items []string
 		path := fmt.Sprintf("%s[%d]", keyPath, i)
 		value, err := expr.Eval(item, env)
 		if err != nil {
-			return nil, l.valueError(path, err.Error())
+			return nil, l.valueError(path, exprMessage(err))
 		}
 		if list, ok := value.([]any); ok {
 			spliced, err := stringList(l, path, list)
@@ -153,7 +164,7 @@ func evalStringList(l *layer, env map[string]any, keyPath string, items []string
 		}
 		text, err := expr.Stringify(value)
 		if err != nil {
-			return nil, l.valueError(path, err.Error())
+			return nil, l.valueError(path, exprMessage(err))
 		}
 		out = append(out, text)
 	}
@@ -165,7 +176,7 @@ func stringList(l *layer, keyPath string, list []any) ([]string, error) {
 	for i, item := range list {
 		text, err := expr.Stringify(item)
 		if err != nil {
-			return nil, l.valueError(fmt.Sprintf("%s[%d]", keyPath, i), err.Error())
+			return nil, l.valueError(fmt.Sprintf("%s[%d]", keyPath, i), exprMessage(err))
 		}
 		out[i] = text
 	}
@@ -202,6 +213,8 @@ func machineView(m model.Machine) map[string]any {
 	return view
 }
 
+// The conversions to map[string]any are needed because the evaluator
+// type-asserts on the unnamed map type, not model.Props.
 func propsMapView(m map[string]model.Props) map[string]any {
 	out := make(map[string]any, len(m))
 	for id, props := range m {

@@ -100,30 +100,35 @@ A child config is merged on top of its parent chain (at most 16 levels):
 
 ### Expressions
 
-String values can contain `${ ... }` expressions. `self` is the current file, `parent` is the merged result of all ancestors:
+Any string value can contain `${ ... }` expressions. The most common use is extending a parent's `extra_args` instead of replacing it:
 
 ```toml
 parent = "base"
-memory = "${parent.memory * 2}"
-cpu = "${parent.cpu}-v2"
 extra_args = "${parent.extra_args + ['-S', '-s']}"
 ```
 
-More examples:
+The other typical use is arithmetic on a parent value:
 
 ```toml
-extra_args = ["${parent.extra_args}", "-S"]        # splice the parent list, then add -S
-extra_args = "${['-S'] + parent.extra_args}"       # prepend instead
-smp = "${self.cores * 2}"                          # read another key of this file
-cores = 2
-[[device]]
-driver = "${parent.device[0].driver}"              # reuse a parent value
-bus = "${1 + 1}"                                   # single placeholder keeps the type: integer 2
+memory = "${parent.memory * 2}"
+cpu = "${parent.cpu}-v2"
 ```
 
-Rules in short: `self` is the current file as written (not expanded), `parent` is the merged result of all ancestors, and unset keys are errors. Parent scalars that are plain decimal numbers are integers, so `${parent.memory + 512}` is arithmetic, while `512M` stays text. Names cannot contain hyphens, so write `parent.netdev['net-0']`. Expressions are not allowed in `parent`. Errors name the file, key and column.
+`parent` is the merged result of all ancestors, `self` is the current file.
 
-Supported: `+ - * / %` on integers, `+` to concatenate strings and lists or append to a list, list literals `[a, b]`, property access `a.b`, `a['b']`, `a[0]`, and `$${` for a literal `${`. A value that is exactly one expression keeps its type. See `docs/SPEC.md` section 3.9.
+Reference:
+
+- Operators: `+ - * / %` on integers. `+` also joins strings, concatenates lists, and appends a single value to a list. Booleans become `on`/`off` inside strings.
+- Literals: integers, `'text'` or `"text"`, `true`, `false`, `[a, b]`.
+- Access: `parent.memory`, `parent.device[0].driver`, `parent.netdev['net-0'].type`. Names cannot contain hyphens, use the `['...']` form. Unset keys are errors.
+- A value that is exactly one expression keeps its type in `netdev`, `audiodev`, `device`, `drive` properties and `extra_args`, so `bus = "${1 + 1}"` is the integer 2. Scalar keys (`memory`, `smp`, ...) are always strings.
+- Parent scalars that are plain decimal numbers are integers, so `${parent.memory + 512}` is arithmetic. `512M` stays text.
+- `self` is not evaluated, it shows values as written. With `cores = "${1 + 1}"`, `self.cores` is the text `${1 + 1}`. Use plain numbers in `self`, or read evaluated values through `parent`.
+- More `extra_args` forms: `["${parent.extra_args}", "-S"]` splices the parent list, `"${['-S'] + parent.extra_args}"` prepends.
+- `$${` gives a literal `${`. Expressions are not allowed in `parent`.
+- Errors name the file, key and column.
+
+See `docs/SPEC.md` section 3.9 for the full rules.
 
 ### Output
 

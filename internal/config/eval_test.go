@@ -79,8 +79,8 @@ extra_args = ["${parent.extra_args}", "-x${1 + 2}"]
 
 func TestLoadReportsExpressionErrors(t *testing.T) {
 	tests := []struct{ name, config, want string }{
-		{"unknown property", "memory = \"${parent.memory}\"\n", "memory: expression"},
-		{"syntax", "cpu = \"${1 +}\"\n", "cpu: expression"},
+		{"unknown property", "memory = \"${parent.memory}\"\n", `memory: column 16: unknown property "memory"`},
+		{"syntax", "cpu = \"${1 +}\"\n", "cpu: column 6: expected a name"},
 		{"list in scalar", "cpu = \"${[1]}\"\n", "cpu: cannot use list as a string"},
 		{"extra args not list", "extra_args = \"${1}\"\n", "extra_args: expression must yield a list"},
 		{"lead key not string", "[[device]]\ndriver = \"${1}\"\n", "device[0].driver: must be a string"},
